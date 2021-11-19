@@ -10,15 +10,13 @@ LABEL maintainer="ntatsuya"
 
 WORKDIR /home/$USERNAME/
 # PATHを通す
-ENV PATH /home/dockeruser/.local/bin:$PATH
-
-COPY ./requirements.txt ./
-
-ENV PYTHONIOENCODING utf-8
-RUN printenv
+ENV PATH /home/dockeruser/.local/bin:$PATH \
+&& PYTHONIOENCODING utf-8 \
+&& TZ Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 EXPOSE 8888
-RUN apt-get update && apt-get install -y --no-install-recommends wget build-essential libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev libgdbm-dev libbz2-dev liblzma-dev zlib1g-dev uuid-dev libffi-dev libdb-dev git vim
+RUN apt-get update && apt-get install -y --no-install-recommends wget build-essential libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev libgdbm-dev libbz2-dev liblzma-dev zlib1g-dev uuid-dev libffi-dev libdb-dev git vim curl file expect sudo
 
 # python install
 RUN cd / \
@@ -32,6 +30,12 @@ RUN cd / \
 
 # mecab install
 RUN apt-get install -y mecab mecab-ipadic mecab-ipadic-utf8 libmecab-dev swig libmecab2
+# ipadic-neologd dict install
+RUN cd / \
+&& git clone https://github.com/neologd/mecab-ipadic-neologd.git
+RUN cd /mecab-ipadic-neologd \
+&& ./bin/install-mecab-ipadic-neologd -n -y
+
 RUN apt-get autoremove -y
 
 # ユーザーの切り替え
@@ -42,6 +46,7 @@ USER $USERNAME
 # ENV PATH=/root/.cargo/bin:$PATH
 
 #python package install
+COPY ./requirements.txt ./
 RUN python3 -m pip install --user --upgrade pip && python3 -m pip install --user --no-cache-dir jupyterlab tensorflow==$TF_ver tensorboard_plugin_profile mecab-python3==0.996.5 unidic-lite ipywidgets transformers==4.3.2 fuzzywuzzy
 RUN python3 -m pip install --user --no-cache-dir -r ./requirements.txt
 RUN cd /home/$USERNAME/
